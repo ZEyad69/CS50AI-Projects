@@ -198,13 +198,9 @@ class MinesweeperAI():
             5) add any new sentences to the AI's knowledge base
                if they can be inferred from existing knowledge
         """
-        
         self.moves_made.add(cell)
-
-       
         self.mark_safe(cell)
 
-        
         neighbors = set()
         row, col = cell
         for i in range(row - 1, row + 2):
@@ -212,47 +208,53 @@ class MinesweeperAI():
                 if (i, j) == cell:
                     continue
                 if 0 <= i < self.height and 0 <= j < self.width:
-                    if (i,j) in self.mines:
-                        count -= 1
-                    elif (i,j) not in self.safes:
+                    if (i, j) not in self.safes and (i, j) not in self.mines:
                         neighbors.add((i, j))
+                    elif (i, j) in self.mines:
+                        count -= 1
 
-        new_sentence = Sentence(neighbors, count)
+        new_sentence = Sentence(neighbors, count) 
         if len(new_sentence.cells) > 0:
             self.knowledge.append(new_sentence)
-
-        changed = True
-        while changed:
+        while True:
             changed = False
-
-        safes = set()
-        mines = set()
-        for sentence in self.knowledge:
-         safes.update(sentence.known_safes())
-         mines.update(sentence.known_mines())
-
-        if safes:
-                changed = True
+            safes=set()
+            mines=set()
+            for sentence in self.knowledge:
+                safes = safes.union(sentence.known_safes())
+                mines = mines.union(sentence.known_mines())
+            if safes:
+            
                 for safe in safes:
                     self.mark_safe(safe)
+                    changed = True                 
 
-        if mines:
-                changed = True
+            if mines:
+                
                 for mine in mines:
                     self.mark_mine(mine)
+                    changed = True
+            
+            self.knowledge = [s for s in self.knowledge if len(s.cells) > 0]
 
-        self.knowledge = [s for s in self.knowledge if len(s.cells) > 0] 
-        for s1 in self.knowledge:
+            new_inferred = []
+            for s1 in self.knowledge:
                 for s2 in self.knowledge:
                     if s1 != s2 and s1.cells.issubset(s2.cells):
                         inferred_cells = s2.cells - s1.cells
                         inferred_count = s2.count - s1.count
-                        inferred_sentence = Sentence(inferred_cells, inferred_count)
 
-                        if inferred_sentence not in self.knowledge:
-                            self.knowledge.append(inferred_sentence)
-                            changed = True           
+                        if len(inferred_cells) > 0:
+                            new_sentence = Sentence(inferred_cells, inferred_count)
+                            if new_sentence not in self.knowledge and new_sentence not in new_inferred:
+                                new_inferred.append(new_sentence)
+                                changed = True
 
+            if new_inferred:
+                self.knowledge.extend(new_inferred)
+            if not changed:
+                break
+                        
 
     def make_safe_move(self):
         """
